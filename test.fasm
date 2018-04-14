@@ -1,0 +1,8 @@
+.start
+	STR 200
+take:
+	SUB 50
+	CMP 0
+	BNE take
+	SUB 10
+	HLT
