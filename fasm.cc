@@ -21,21 +21,44 @@ typedef u64 instruction;
 
 enum opcode
 {
-    HLT = 0,
-    STR,
-    ADD,
-    SUB,
+    HLT = 0, //0 arguments
+    
+    STR, //2 arguments
+    LDR,
     CMP,
-    BEQ,
+    MOV,
+    MVN,
+    
+    ADD, //3 arguments
+    SUB,
+    AND,
+    ORR,
+    EOR,
+    LSL,
+    LSR,
+    
+    BEQ, //1 argument
     BNE,
     BLT,
     BGT,
     JMP,
-    opcode_end,
 };
-char* OpCodeArray[] = {"HLT", "STR", "ADD", "SUB", "CMP", "BEQ", "BNE", "BLT", "BGT", "JMP"};
 
-opcode GetOpCodeEnum(char* OpCode)
+global char* RegisterArray[] = 
+{
+    "eax", "ebx", "ecx", "edx", "eex",
+};
+
+global char* OpCodeArray[] = 
+{
+    "HLT",
+    "STR","LDR","CMP","MOV", "MVN",
+    "ADD","SUB","AND","ORR", "EOR", "LSL", "LSR",
+    "BEQ", "BNE", "BLT", "BGT", "JMP"
+};
+
+internal opcode
+GetOpCode(char* OpCode)
 {
     for (u32 Op = 0; Op < ArrayCount(OpCodeArray); Op++)
     {
@@ -46,13 +69,33 @@ opcode GetOpCodeEnum(char* OpCode)
     }
 }
 
-instruction HarvardToVonNeumann(u32 OpCode, u32 Operand)
+internal u32
+GetRegister(char* Register)
+{
+    for (u32 Reg = 0; Reg < ArrayCount(RegisterArray); Reg++)
+    {
+        if(strcmp(RegisterArray[Reg], Register)==0)
+        {
+            return(Reg);
+        }
+    }
+}
+internal void
+LoadRegister(char* Register, s32 Value)
+{
+    u32 Index = GetRegister(Register);
+    
+}
+
+internal instruction 
+HarvardToVonNeumann(u32 OpCode, u32 Operand)
 {
     u64 result = ((u64)OpCode) << 32 | Operand;
     return(result);
 }
 
-u32 FindLabelIndex(char *Name, label *Labels, u32 LabelCount)
+internal u32 
+FindLabelIndex(char *Name, label *Labels, u32 LabelCount)
 {
     for(s32 Label = 0; Label < LabelCount; Label++)
     {
@@ -64,13 +107,15 @@ u32 FindLabelIndex(char *Name, label *Labels, u32 LabelCount)
     return(-1);
 }
 
-u32 ExtractOpcode(instruction Instruction)
+internal u32
+ExtractOpcode(instruction Instruction)
 {
     u32 result = (u32)(Instruction>>32);
     return(result);
 }
 
-u32 ExtractOperand(instruction Instruction)
+internal u32
+ExtractOperand(instruction Instruction)
 {
     u32 result = (u32)Instruction;
     return(result);
@@ -84,8 +129,8 @@ int main(int Argc, char** Argv)
     u32 Character = 0;
     instruction Memory[50];
     label Labels[50];
-    
-    u64 Accumulator = 0;
+    s64 Registers[5];
+    s64 Accumulator = 0;
     u64 ProgramCounter = 0;
     
     char Line[50];
@@ -109,29 +154,75 @@ int main(int Argc, char** Argv)
     InstructionIndex = 0;
     while(fgets(Line, sizeof(Line), File) != NULL)
     {
-        char OperandChar[16];
-        char OpCodeChar[4];
+        char OperandStr[16];
+        char OpCodeStr[4];
+        char RegisterStoreStr[4];
+        char RegisterInputStr[4];
+        
         u32 OperandInt;
         u32 OpCodeInt;
+        
+        opcode OpCode;
+        
         if(strchr(Line, ':') == NULL)
         {
-            sscanf(Line, "%s %s",&OpCodeChar[0], &OperandChar[0]);
-            OpCodeInt = GetOpCodeEnum(OpCodeChar);
-            if(!isdigit(OperandChar[0]))
+            sscanf(Line, "%s",&OpCodeStr[0]);
+            OpCodeInt = GetOpCode(OpCodeStr);
+            switch(OpCodeInt)
             {
-                OperandInt =Labels[FindLabelIndex(OperandChar, Labels, ArrayCount(Labels))].Location;
+                case HLT:
+                sscanf(Line, "%s", &OpCodeStr[0]);
+                break;
+                
+                case STR:
+                case LDR:
+                case CMP:
+                case MOV:
+                case MVN:
+                sscanf(Line, "%s %s %s", &OpCodeStr[0], &RegisterInputStr[0], &OperandStr[0]);
+                break;
+                
+                case ADD:
+                case SUB:
+                case AND:
+                case ORR:
+                case EOR:
+                case LSL:
+                case LSR:
+                sscanf(Line, "%s %s %s %s", 
+                       &OpCodeStr[0], &RegisterInputStr[0], &RegisterStoreStr[0], &OperandStr[0]);
+                break;
+                
+                case BEQ:
+                case BNE:
+                case BLT:
+                case BGT:
+                case JMP:
+                sscanf(Line, "%s %s", &OpCodeStr[0], &OperandStr[0]);
+                break;
             }
-            else
+            
+            if(OpCodeInt >= BEQ && OpCodeInt <= JMP)
             {
-                OperandInt = atoi(OperandChar);
+                u32 LabelIndex = FindLabelIndex(OperandStr, Labels, ArrayCount(Labels));
+                OperandInt = Labels[LabelIndex].Location;
+            }
+            if(!isdigit(OperandStr[1])) 
+            {
+                
+            }
+            if(OperandStr[0] == '#')
+            {
+                char Literal[16];
+                strncpy(Literal, OperandStr +1, 15);
+                OperandInt = atoi(Literal);
             }
             Memory[InstructionIndex] = HarvardToVonNeumann(OpCodeInt, OperandInt);
             InstructionIndex++;
         }
     }
     u8 KeyUp = 0;
-    u32 OpCode, Operand, CurrentInstructionRegister;
-    
+    u32 OpCode, Operand, CurrentInstructionRegister, RegisterStore, RegisterInput;
     printf("Press the down key to start");
     
     do
@@ -160,6 +251,10 @@ int main(int Argc, char** Argv)
                 
                 case JMP:
                 ProgramCounter = Operand-1;
+                break;
+                
+                case MVN:
+                Accumulator = ~Accumulator;
                 break;
                 
                 case BEQ:

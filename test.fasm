@@ -1,7 +1,12 @@
-	STR 200
+	STR eax #5
+	MVN eax #5
+	ADD eax eax #1
+	ADD eax #25
+	HLT
+	STR eax #200
 take:
-	SUB 50
-	CMP 0
+	SUB eax eax #50
+	CMP eax #0
 	BNE take
-	SUB 10
+	SUB eax eax #10
 	HLT

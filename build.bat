@@ -11,8 +11,7 @@ set "PATH=%PATH%;%LLVMPath%\bin;%VSBasePath%\bin\HostX64\x64"
 
 set CFLAGS= ^
 	-std=c++14 ^
-	-Wno-everything ^
-	-xc -O3
+	-Wno-everything
 
 set LDFLAGS= ^
  -machine:x64 ^
@@ -20,16 +19,16 @@ set LDFLAGS= ^
 
 @ctime -begin fasm.ctm
 set LDLIBS= ^
-	-libpath:"%VSBasePath%\lib\x64" ^
-	-libpath:"%WinSDKPath%\Lib\%WinSDKVersion%\ucrt\x64" ^
-	-libpath:"%WinSDKPath%\Lib\%WinSDKVersion%\um\x64" ^
-	-libpath:"C:\Program Files\LLVM\lib" ^
+	/libpath:"%VSBasePath%\lib\x64" ^
+	/libpath:"%WinSDKPath%\Lib\%WinSDKVersion%\ucrt\x64" ^
+	/libpath:"%WinSDKPath%\Lib\%WinSDKVersion%\um\x64" ^
+	/libpath:"C:\Program Files\LLVM\lib" ^
 	libcmt.lib User32.lib
 
 @echo on
 @echo Compiling...
-@clang++.exe -g fasm.cc -o fasm.o -c %CFLAGS%
+@clang.exe -g -gcodeview fasm.cc -o fasm.o -c %CFLAGS%
 
-@lld-link.exe fasm.o -out:"%OUT%" %LDFLAGS% %LDLIBS%
+@link.exe /debug fasm.o -out:"%OUT%" %LDFLAGS% %LDLIBS%
 @ctime -end fasm.ctm
 @echo Done
