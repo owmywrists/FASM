@@ -27,7 +27,7 @@ set LDLIBS= ^
 	libcmt.lib User32.lib
 
 @echo on
-@echo Compiling..
+@echo Compiling...
 @clang++.exe -g fasm.cc -o fasm.o -c %CFLAGS%
 
 @lld-link.exe fasm.o -out:"%OUT%" %LDFLAGS% %LDLIBS%

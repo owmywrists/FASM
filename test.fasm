@@ -1,4 +1,3 @@
-.start
 	STR 200
 take:
 	SUB 50

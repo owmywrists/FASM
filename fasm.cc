@@ -14,16 +14,45 @@
 struct label
 {
     char Name[8];
-    s32 Location;
+    u32 Location;
 };
 
-struct instruction
+typedef u64 instruction;
+
+enum opcode
 {
-    char OpCode[4];
-    s32 Operand;
+    HLT = 0,
+    STR,
+    ADD,
+    SUB,
+    CMP,
+    BEQ,
+    BNE,
+    BLT,
+    BGT,
+    JMP,
+    opcode_end,
 };
+char* OpCodeArray[] = {"HLT", "STR", "ADD", "SUB", "CMP", "BEQ", "BNE", "BLT", "BGT", "JMP"};
 
-s32 FindLabelIndex(char *Name, label *Labels, s32 LabelCount)
+opcode GetOpCodeEnum(char* OpCode)
+{
+    for (u32 Op = 0; Op < ArrayCount(OpCodeArray); Op++)
+    {
+        if (strcmp(OpCodeArray[Op], OpCode) == 0)
+        {
+            return((opcode)Op);
+        }
+    }
+}
+
+instruction HarvardToVonNeumann(u32 OpCode, u32 Operand)
+{
+    u64 result = ((u64)OpCode) << 32 | Operand;
+    return(result);
+}
+
+u32 FindLabelIndex(char *Name, label *Labels, u32 LabelCount)
 {
     for(s32 Label = 0; Label < LabelCount; Label++)
     {
@@ -35,26 +64,33 @@ s32 FindLabelIndex(char *Name, label *Labels, s32 LabelCount)
     return(-1);
 }
 
+u32 ExtractOpcode(instruction Instruction)
+{
+    u32 result = (u32)(Instruction>>32);
+    return(result);
+}
+
+u32 ExtractOperand(instruction Instruction)
+{
+    u32 result = (u32)Instruction;
+    return(result);
+}
+
 int main(int Argc, char** Argv)
 {
     
     FILE *File = fopen(Argv[1], "r");
-    s32 LineCount = 0;
-    s32 Character = 0;
+    u32 LineCount = 0;
+    u32 Character = 0;
     instruction Memory[50];
-    s32 Accumulator= 0;
     label Labels[50];
     
-    char Line[50];
-    s32 InstructionIndex = 0;
-    s32 LabelIndex = 0;
-    fgets(Line, sizeof(Line), File);
-    if(!strcmp(Line, ".start"))
-    {
-        printf("You must define an entry point!");
-        return(-1);
-    }
+    u64 Accumulator = 0;
+    u64 ProgramCounter = 0;
     
+    char Line[50];
+    u32 InstructionIndex = 0;
+    u32 LabelIndex = 0;
     while(fgets(Line, sizeof(Line), File) != NULL)
     {
         if (strchr(Line, ':') != NULL)
@@ -69,88 +105,105 @@ int main(int Argc, char** Argv)
         InstructionIndex++;
     }
     rewind(File);
-    File++;
+    
     InstructionIndex = 0;
     while(fgets(Line, sizeof(Line), File) != NULL)
     {
-        char Operand[16];
+        char OperandChar[16];
+        char OpCodeChar[4];
+        u32 OperandInt;
+        u32 OpCodeInt;
         if(strchr(Line, ':') == NULL)
         {
-            sscanf(Line, "%s %s",&Memory[InstructionIndex].OpCode, &Operand);
-            if(!isdigit(Operand[0]))
+            sscanf(Line, "%s %s",&OpCodeChar[0], &OperandChar[0]);
+            OpCodeInt = GetOpCodeEnum(OpCodeChar);
+            if(!isdigit(OperandChar[0]))
             {
-                Memory[InstructionIndex].Operand =Labels[FindLabelIndex(Operand, Labels, ArrayCount(Labels))].Location;
+                OperandInt =Labels[FindLabelIndex(OperandChar, Labels, ArrayCount(Labels))].Location;
             }
             else
             {
-                Memory[InstructionIndex].Operand = atoi(Operand);
+                OperandInt = atoi(OperandChar);
             }
+            Memory[InstructionIndex] = HarvardToVonNeumann(OpCodeInt, OperandInt);
             InstructionIndex++;
         }
     }
-    s8 KeyUp = 0;
-    s32 ProgramCounter = 0;
+    u8 KeyUp = 0;
+    u32 OpCode, Operand, CurrentInstructionRegister;
+    
+    printf("Press the down key to start");
+    
     do
     {
-        if(GetAsyncKeyState(VK_SHIFT) & 0x8000 && KeyUp == 0)
+        if(GetAsyncKeyState(VK_DOWN) & 0x8000 && KeyUp == 0)
         {
             KeyUp = 1;
             system("cls");
             
-            if(strcmp(Memory[ProgramCounter].OpCode, "STR") == 0)
+            OpCode = ExtractOpcode(Memory[ProgramCounter]);
+            CurrentInstructionRegister= ExtractOperand(Memory[ProgramCounter-1]);
+            Operand = ExtractOperand(Memory[ProgramCounter]);
+            switch((opcode)OpCode)
             {
-                Accumulator = Memory[ProgramCounter].Operand;
-            }
-            if(strcmp(Memory[ProgramCounter].OpCode, "ADD") == 0)
-            {
-                Accumulator += Memory[ProgramCounter].Operand;
-            }
-            if(strcmp(Memory[ProgramCounter].OpCode, "SUB") == 0)
-            {
-                Accumulator -= Memory[ProgramCounter].Operand;
-            }
-            if(strcmp(Memory[ProgramCounter].OpCode, "JMP") == 0)
-            {
-                ProgramCounter = Memory[ProgramCounter].Operand-1;
-            }
-            if(strcmp(Memory[ProgramCounter].OpCode, "BEQ") == 0)
-            {
-                if(Memory[ProgramCounter-1].Operand == Accumulator)
+                case STR:
+                Accumulator = Operand;
+                break;
+                
+                case ADD:
+                Accumulator += Operand;
+                break;
+                
+                case SUB:
+                Accumulator -= Operand;
+                break;
+                
+                case JMP:
+                ProgramCounter = Operand-1;
+                break;
+                
+                case BEQ:
+                if(CurrentInstructionRegister == Accumulator)
                 {
-                    ProgramCounter = Memory[ProgramCounter].Operand-1;
+                    ProgramCounter = Operand-1;
                 }
-            }
-            if(strcmp(Memory[ProgramCounter].OpCode, "BNE") == 0)
-            {
-                if(Memory[ProgramCounter-1].Operand != Accumulator)
+                break;
+                
+                case BNE:
+                if(CurrentInstructionRegister != Accumulator)
                 {
-                    ProgramCounter = Memory[ProgramCounter].Operand-1;
+                    ProgramCounter = Operand-1;
                 }
-            }
-            if(strcmp(Memory[ProgramCounter].OpCode, "BLT") == 0)
-            {
-                if(Memory[ProgramCounter-1].Operand > Accumulator)
+                break;
+                
+                case BLT:
+                if(CurrentInstructionRegister < Accumulator)
                 {
-                    ProgramCounter = Memory[ProgramCounter].Operand-1;
+                    ProgramCounter = Operand-1;
                 }
-            }
-            if(strcmp(Memory[ProgramCounter].OpCode, "BGT") == 0)
-            {
-                if(Memory[ProgramCounter-1].Operand < Accumulator)
+                break;
+                
+                case BGT:
+                if(CurrentInstructionRegister > Accumulator)
                 {
-                    ProgramCounter = Memory[ProgramCounter].Operand-1;
+                    ProgramCounter = Operand-1;
                 }
+                break;
+                
             }
             
-            for (s32 Source = 0; Source < InstructionIndex; Source++)
+            for (u32 Source = 0; Source < InstructionIndex; Source++)
             {
+                u32 SourceOpCode = ExtractOpcode(Memory[Source]);
+                u32 SourceOperand = ExtractOperand(Memory[Source]);
+                
                 if(!(Source == ProgramCounter+1))
                 {
-                    printf("  %s %d\n", Memory[Source].OpCode, Memory[Source].Operand);
+                    printf("%s %d\n", OpCodeArray[SourceOpCode], SourceOperand);
                 }
                 else
                 {
-                    printf("> %s %d\n", Memory[Source].OpCode, Memory[Source].Operand);
+                    printf("> %s %d\n", OpCodeArray[SourceOpCode], SourceOperand);
                 }
                 
             }
@@ -158,12 +211,12 @@ int main(int Argc, char** Argv)
             ProgramCounter++;
             
         }
-        else if(GetAsyncKeyState(VK_SHIFT) == 0)
+        else if(GetAsyncKeyState(VK_DOWN) == 0)
         {
             KeyUp = 0;
         }
         
-    }while(!(strcmp(Memory[ProgramCounter].OpCode, "HLT") == 0));
+    }while(OpCode != HLT);
     
     fclose(File);
     
