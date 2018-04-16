@@ -1,7 +1,7 @@
 	STR eax #5
 	MVN eax #5
 	ADD eax eax #1
-	ADD eax #25
+	ADD eax eax #25
 	HLT
 	STR eax #200
 take:
