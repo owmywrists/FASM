@@ -292,7 +292,7 @@ int main(int Argc, char** Argv)
                 u32 SourceOpCode = ExtractOpcode(Memory[Source]);
                 u32 SourceOperand = ExtractOperand(Memory[Source]);
                 
-                if(!(Source == ProgramCounter+1))
+                if(!(Source == ProgramCounter))
                 {
                     printf("%s %d\n", OpCodeArray[SourceOpCode], SourceOperand);
                 }
