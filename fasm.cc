@@ -207,10 +207,7 @@ int main(int Argc, char** Argv)
                 u32 LabelIndex = FindLabelIndex(OperandStr, Labels, ArrayCount(Labels));
                 OperandInt = Labels[LabelIndex].Location;
             }
-            if(!isdigit(OperandStr[1])) 
-            {
-                
-            }
+            
             if(OperandStr[0] == '#')
             {
                 char Literal[16];
@@ -294,7 +291,7 @@ int main(int Argc, char** Argv)
                 
                 if(!(Source == ProgramCounter))
                 {
-                    printf("%s %d\n", OpCodeArray[SourceOpCode], SourceOperand);
+                    printf("  %s %d\n", OpCodeArray[SourceOpCode], SourceOperand);
                 }
                 else
                 {
