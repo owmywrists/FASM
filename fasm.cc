@@ -8,7 +8,6 @@
 #include <assert.h>
 #include <string.h>
 #include <ctype.h>
-#include <windows.h>
 #include "fasm.h"
 
 struct label
@@ -224,9 +223,8 @@ int main(int Argc, char** Argv)
     
     do
     {
-        if(GetAsyncKeyState(VK_DOWN) & 0x8000 && KeyUp == 0)
+        if(fgetc(stdin) == 'n')
         {
-            KeyUp = 1;
             system("cls");
             
             OpCode = ExtractOpcode(Memory[ProgramCounter]);
@@ -303,10 +301,8 @@ int main(int Argc, char** Argv)
             ProgramCounter++;
             
         }
-        else if(GetAsyncKeyState(VK_DOWN) == 0)
-        {
-            KeyUp = 0;
-        }
+        
+        
         
     }while(OpCode != HLT);
     
